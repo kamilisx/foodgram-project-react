@@ -1,0 +1,42 @@
+version: '3.3'
+
+volumes:
+  static:
+  backend_static:
+  backend_media:
+  postgres_data:
+
+services:
+  db:
+    image: postgres:13
+    env_file: .env
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  frontend:
+    image: kamilisx/foodgram_frontend
+    volumes:
+      - static:/app/result_build/build/
+  backend:
+    image: kamilisx/foodgram_backend
+    restart: always
+    env_file: .env
+    volumes:
+      - backend_static:/app/static/
+      - backend_media:/app/backend_media/
+    depends_on:
+      - db
+      - frontend
+  nginx:
+    image: kamilisx/foodgram_gateway
+    restart: always
+    ports:
+      - 9000:80
+    volumes:
+      - static:/usr/share/nginx/html/
+      - backend_static:/backend_static
+      - backend_media:/backend_media
+      - ./docs/:/usr/share/nginx/html/api/docs/
+    depends_on:
+      - frontend
+      - backend
