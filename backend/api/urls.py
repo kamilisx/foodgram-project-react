@@ -4,14 +4,14 @@ from rest_framework.routers import DefaultRouter
 from .views import (CustomUserViewSet, IngredientsVewSet, RecipeViewSet,
                     TagsViewSet)
 
-app_name: str = "api"
+app_name = "api"
 
-router: DefaultRouter = DefaultRouter()
+router = DefaultRouter()
 router.register("tags", TagsViewSet)
 router.register("recipes", RecipeViewSet)
 router.register("users", CustomUserViewSet, basename="users")
 router.register("ingredients", IngredientsVewSet)
 
-urlpatterns: list = [
-    path("", include(router.urls)),
+urlpatterns = [
+    path('', include(router.urls)),
 ]

@@ -27,6 +27,17 @@ class TagsSerializer(serializers.ModelSerializer):
         model = Tag
         fields = "__all__"
 
+class IngredientSerialiser(serializers.ModelSerializer):
+    class Meta:
+        model = Ingredient
+        fields = "__all__"
+
+
+class RecipeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Recipe
+        fields = ("id", "name", "image", "cooking_time")
+
 
 class Ingredients_RecipeSerializer(serializers.ModelSerializer):
     name = serializers.ReadOnlyField(source="ingredient.name")
@@ -82,18 +93,18 @@ class CustomUserCreateSerializer(UserCreateSerializer):
     def validate_email(self, data):
         if User.objects.filter(email=data).exists():
             raise serializers.ValidationError(
-                "Пользователь с таким email уже существует.",
+                "Данный e-mail уже зарегистрирован",
             )
         return data
 
     def validate_first_name(self, data):
         if len(data) > 150:
-            raise serializers.ValidationError("Слишком длинное имя.")
+            raise serializers.ValidationError("Введите имя короче")
         return data
 
     def validate_last_name(self, data):
         if len(data) > 150:
-            raise serializers.ValidationError("Слишком длинная фамилия.")
+            raise serializers.ValidationError("Введите фамилию короче")
         return data
 
 
@@ -102,8 +113,8 @@ class SubscriptionSerializer(CustomUserSerializer):
     recipes_count = serializers.SerializerMethodField()
 
     class Meta:
-        model: User = User
-        fields: tuple = (
+        model = User
+        fields = (
             "id",
             "username",
             "first_name",
@@ -116,7 +127,7 @@ class SubscriptionSerializer(CustomUserSerializer):
 
     @staticmethod
     def get_resipe_serializer():
-        return ShortRecipeSerializer
+        return RecipeSerializer
 
     def get_recipes(self, obj):
         author_recipes = Recipe.objects.filter(author=obj)
@@ -140,17 +151,17 @@ class SubscriptionSerializer(CustomUserSerializer):
 
 
 class RecipeCreateIngredientSerializer(serializers.ModelSerializer):
-    id: int = serializers.PrimaryKeyRelatedField(
+    id = serializers.PrimaryKeyRelatedField(
         source="ingredient",
         queryset=Ingredient.objects.all(),
     )
 
     class Meta:
-        fields: tuple = ("id", "amount")
+        fields = ("id", "amount")
         model = RecipeIngredient
 
 
-class RecipeWriteSerializer(serializers.ModelSerializer):
+class RecipeFillSerializer(serializers.ModelSerializer):
     ingredients = RecipeCreateIngredientSerializer(many=True)
     image = Base64ImageField()
     is_favorited = serializers.SerializerMethodField()
@@ -176,7 +187,7 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("author",)
 
-    def __is_auth_and_exists(self, obj, model) -> bool:
+    def __is_auth_and_exists(self, obj, model):
         request = self.context.get("request")
         if request and request.user.is_authenticated:
             return model.objects.filter(
@@ -184,29 +195,29 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
             ).exists()
         return False
 
-    def get_is_favorited(self, obj) -> bool:
+    def get_is_favorited(self, obj):
         return self.__is_auth_and_exists(obj, FavouriteRecipe)
 
-    def get_is_in_shopping_cart(self, obj) -> bool:
+    def get_is_in_shopping_cart(self, obj):
         return self.__is_auth_and_exists(obj, ShoppingCart)
 
     def validate_ingredients(self, values):
         if not values:
             raise serializers.ValidationError(
-                "Нужно указать хотя бы один элемент.",
+                "Укажите больше 1 элемента",
             )
-        ingredients_list: list = []
+        ingredients_list = []
         for value in values:
             ingredient = get_object_or_404(
                 Ingredient, id=value["ingredient"].id
             )
             if int(value["amount"]) <= 0:
                 raise serializers.ValidationError(
-                    {"Количество должно быть больше 0."}
+                    {"Укажите количество больше 0"}
                 )
             if ingredient in ingredients_list:
                 raise serializers.ValidationError(
-                    "Значения должны быть уникальны."
+                    "Укажите уникальное значение"
                 )
             ingredients_list.append(ingredient)
         return values
@@ -214,13 +225,13 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
     def validate_tags(self, values):
         if not values:
             raise serializers.ValidationError(
-                "Нужно выбрать хотя бы один тег."
+                "Выберите больше 1 тэга"
             )
         tags_list: list = []
         for tag in values:
             if tag in tags_list:
                 raise serializers.ValidationError(
-                    "Теги должны быть уникальными."
+                    "Укажите уникальное значение"
                 )
             tags_list.append(tag)
         return values
@@ -246,7 +257,7 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         tags = validated_data.pop("tags", None)
         if ingredients is None or tags is None:
             raise serializers.ValidationError(
-                "Поля ингредиентов и тегов должны быть заполнены."
+                "Заполните все поля"
             )
         instance.tags.set(tags)
         instance.ingredients.clear()
@@ -277,8 +288,8 @@ class RecipeReadSerializer(serializers.ModelSerializer):
     is_in_shopping_cart = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
-        model: Recipe = Recipe
-        exclude: tuple = ("pub_date",)
+        model = Recipe
+        exclude = ("pub_date",)
 
     def __is_auth_and_exists(self, obj, model):
         request = self.context.get("request")
@@ -293,15 +304,3 @@ class RecipeReadSerializer(serializers.ModelSerializer):
 
     def get_is_in_shopping_cart(self, obj):
         return self.__is_auth_and_exists(obj, ShoppingCart)
-
-
-class IngredientSerialiser(serializers.ModelSerializer):
-    class Meta:
-        model: Ingredient = Ingredient
-        fields: str = "__all__"
-
-
-class ShortRecipeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model: Recipe = Recipe
-        fields: tuple = ("id", "name", "image", "cooking_time")

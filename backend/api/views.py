@@ -22,14 +22,13 @@ from users.models import Follow
 from .filters import IngredientFilter, RecipeFilter
 from .pagination import CustomPageNumberPagination
 from .permissions import CurrentUserOnly, RecipePermission
-from .serializers import (CustomUserCreateSerializer, IngredientSerialiser,
-                          RecipeReadSerializer, RecipeWriteSerializer,
-                          ShortRecipeSerializer, SubscriptionSerializer,
-                          TagsSerializer)
+from .serializers import (IngredientSerialiser, CustomUserCreateSerializer,
+                          RecipeReadSerializer,RecipeSerializer, RecipeFillSerializer,
+                          SubscriptionSerializer,TagsSerializer)
 
 User = get_user_model()
 
-FILENAME = "shoppingcart.pdf"
+SHOPPINGCART_FILE = "shoppingcartlist.pdf"
 
 
 class CustomUserCreateView(CreateAPIView):
@@ -61,7 +60,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.request.method in SAFE_METHODS:
             return RecipeReadSerializer
-        return RecipeWriteSerializer
+        return RecipeFillSerializer
 
     @action(
         detail=True,
@@ -117,54 +116,51 @@ class RecipeViewSet(viewsets.ModelViewSet):
                     y_position = 800
             page.save()
             buffer.seek(0)
-            return FileResponse(buffer, as_attachment=True, filename=FILENAME)
+            return FileResponse(buffer, as_attachment=True, filename=SHOPPINGCART_FILE)
         page.drawString(
             x_position, y_position, "Список пуст"
         )
         page.save()
         buffer.seek(0)
-        return FileResponse(buffer, as_attachment=False, filename=FILENAME)
+        return FileResponse(buffer, as_attachment=False, filename=SHOPPINGCART_FILE)
 
     @action(
         detail=False, methods=["get"], permission_classes=(IsAuthenticated,)
     )
-    def download_shopping_cart(self, request) -> FileResponse:
+    def download_shopping_cart(self, request):
         return self.create_shopping_cart_pdf(request)
 
     @staticmethod
-    def add_to(model, user: User, pk: int) -> Response:
-        """Add object to model."""
+    def add_to(model, user: User, pk):
         if model.objects.filter(user=user, recipe__id=pk).exists():
             return Response(
-                {"errors": "Рецепт уже добавлен."},
+                {"errors": "Рецепт уже существует"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         if not Recipe.objects.filter(id=pk).exists():
             return Response(
-                {"errors": "Такого рецепта не существует."},
+                {"errors": "Такого рецепта нет"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         recipe = Recipe.objects.get(id=pk)
         model.objects.create(user=user, recipe=recipe)
-        serializer = ShortRecipeSerializer(recipe)
+        serializer = RecipeSerializer(recipe)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @staticmethod
-    def delete_from(model, user: User, pk: int) -> Response:
-        """Delete a recipe from model."""
+    def delete_from(model, user: User, pk):
         recipe = get_object_or_404(Recipe, pk=pk)
         obj = model.objects.filter(user=user, recipe=recipe)
         if obj.exists():
             obj.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(
-            {"errors": "В вашем списке такого рецепта нет."},
+            {"errors": "Такого рецепта нет."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
 
 class IngredientsVewSet(viewsets.ReadOnlyModelViewSet):
-    """Viewset for ingredients."""
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerialiser
     filter_backends = (DjangoFilterBackend,)
@@ -172,7 +168,6 @@ class IngredientsVewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class CustomUserViewSet(UserViewSet):
-    """Viewset for users."""
     queryset = User.objects.all()
     pagination_class = CustomPageNumberPagination
 
@@ -183,7 +178,6 @@ class CustomUserViewSet(UserViewSet):
         serializer_class=SubscriptionSerializer,
     )
     def subscriptions(self, request):
-        """Get subscriptions list."""
         user = self.request.user
         user_subscriptions = user.follower.all()
         authors = [item.author.id for item in user_subscriptions]
@@ -199,17 +193,16 @@ class CustomUserViewSet(UserViewSet):
         serializer_class=SubscriptionSerializer,
     )
     def subscribe(self, request, id=None):
-        """Set subscription to author."""
         user = self.request.user
         author = get_object_or_404(User, pk=id)
 
         if self.request.method == "POST":
             if user == author:
                 raise exceptions.ValidationError(
-                    "Подписка на самого себя запрещена."
+                    "Невозможно подписаться на себя"
                 )
             if Follow.objects.filter(user=user, author=author).exists():
-                raise exceptions.ValidationError("Подписка уже оформлена.")
+                raise exceptions.ValidationError("Подписка уже активна")
             Follow.objects.create(user=user, author=author)
             serializer = self.get_serializer(author)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -217,7 +210,7 @@ class CustomUserViewSet(UserViewSet):
         if self.request.method == "DELETE":
             if not Follow.objects.filter(user=user, author=author).exists():
                 raise exceptions.ValidationError(
-                    "Подписка не была оформлена, либо уже удалена."
+                    "Подписка не существует"
                 )
             get_object_or_404(Follow, user=user, author=author).delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
@@ -229,6 +222,5 @@ class CustomUserViewSet(UserViewSet):
         permission_classes=(CurrentUserOnly,),
     )
     def me(self, request):
-        """GET http method for api/users/me."""
         serializer = self.get_serializer(request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
