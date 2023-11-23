@@ -27,6 +27,7 @@ class TagsSerializer(serializers.ModelSerializer):
         model = Tag
         fields = "__all__"
 
+
 class IngredientSerialiser(serializers.ModelSerializer):
     class Meta:
         model = Ingredient

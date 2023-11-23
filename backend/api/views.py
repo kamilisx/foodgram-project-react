@@ -22,9 +22,10 @@ from users.models import Follow
 from .filters import IngredientFilter, RecipeFilter
 from .pagination import CustomPageNumberPagination
 from .permissions import CurrentUserOnly, RecipePermission
-from .serializers import (IngredientSerialiser, CustomUserCreateSerializer,
-                          RecipeReadSerializer,RecipeSerializer, RecipeFillSerializer,
-                          SubscriptionSerializer,TagsSerializer)
+from .serializers import (CustomUserCreateSerializer, IngredientSerialiser,
+                          RecipeFillSerializer, RecipeReadSerializer,
+                          RecipeSerializer, SubscriptionSerializer,
+                          TagsSerializer)
 
 User = get_user_model()
 
@@ -116,13 +117,15 @@ class RecipeViewSet(viewsets.ModelViewSet):
                     y_position = 800
             page.save()
             buffer.seek(0)
-            return FileResponse(buffer, as_attachment=True, filename=SHOPPINGCART_FILE)
+            return FileResponse(buffer, as_attachment=True,
+                                filename=SHOPPINGCART_FILE)
         page.drawString(
             x_position, y_position, "Список пуст"
         )
         page.save()
         buffer.seek(0)
-        return FileResponse(buffer, as_attachment=False, filename=SHOPPINGCART_FILE)
+        return FileResponse(buffer, as_attachment=False,
+                            filename=SHOPPINGCART_FILE)
 
     @action(
         detail=False, methods=["get"], permission_classes=(IsAuthenticated,)
