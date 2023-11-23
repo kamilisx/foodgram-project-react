@@ -9,11 +9,10 @@ NAME_MAX_CHARACTERS = 150
 TEXT_MAX_CHARACTERS = 400
 IMAGE_MAX_CHARACTERS = 7
 
-
 class Tag(models.Model):
     name = models.CharField(
-        verbose_name="Название",
-        max_length=NAME_MAX_CHARACTERS,
+        verbose_name="Название", 
+        max_length=NAME_MAX_CHARACTERS, 
         unique=True
     )
     color = models.CharField(
@@ -45,7 +44,7 @@ class Tag(models.Model):
 
     def __str__(self):
         return self.name
-
+    
 
 class Recipe(models.Model):
     author = models.ForeignKey(
@@ -67,8 +66,8 @@ class Recipe(models.Model):
         null=False,
     )
     text = models.TextField(
-        verbose_name="Описание",
-        null=False,
+        verbose_name="Описание", 
+        null=False, 
         max_length=TEXT_MAX_CHARACTERS
     )
     ingredients = models.ManyToManyField(
@@ -88,7 +87,7 @@ class Recipe(models.Model):
         validators=(MinValueValidator(MIN_VALUE),),
     )
     pub_date: models.DateTimeField = models.DateTimeField(
-        verbose_name="Дата публикации",
+        verbose_name="Дата публикации", 
         auto_now_add=True
     )
 
@@ -108,7 +107,7 @@ class Ingredient(models.Model):
         null=False,
         db_index=True,
     )
-    measurement_unit = models.CharField(
+    measurement_unit= models.CharField(
         verbose_name="Ед. измерения",
         max_length=NAME_MAX_CHARACTERS,
         null=False
@@ -125,7 +124,7 @@ class Ingredient(models.Model):
             )
         ]
 
-    def __str__(self):
+    def __str__(self) :
         return f"{self.name}, {self.measurement_unit}"
 
 
@@ -170,18 +169,18 @@ class FavouriteRecipe(models.Model):
         related_name="favourite",
     )
     date_added: models.DateTimeField = models.DateTimeField(
-        verbose_name="дата создания",
+        verbose_name="дата создания", 
         auto_now_add=True
     )
 
     class Meta:
-        verbose_name = "Избранное"
-        verbose_name_plural = "Избранное"
-        ordering = ("-date_added",)
-        constraints = [
+        verbose_name= "Избранное"
+        verbose_name_plural= "Избранное"
+        ordering= ("-date_added",)
+        constraints= [
             models.UniqueConstraint(
                 fields=["user", "recipe"],
-                name="user_recipe_fav"
+                name="unique_favourite"
             )
         ]
 
@@ -193,13 +192,13 @@ class FavouriteRecipe(models.Model):
 
 
 class ShoppingCart(models.Model):
-    user = models.ForeignKey(
+    user= models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name="shopping_cart",
         verbose_name="Пользователь",
     )
-    recipe = models.ForeignKey(
+    recipe= models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
         related_name="shopping_cart",
@@ -207,8 +206,8 @@ class ShoppingCart(models.Model):
     )
 
     class Meta:
-        verbose_name = "Список покупок"
-        constraints = [
+        verbose_name= "Список покупок"
+        constraints= [
             models.UniqueConstraint(
                 fields=["user", "recipe"],
                 name="user_recipe_shop_cart"
