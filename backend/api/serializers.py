@@ -5,10 +5,9 @@ from django.core.files.base import ContentFile
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from djoser.serializers import UserCreateSerializer, UserSerializer
-from rest_framework import serializers
-
 from recipes.models import (FavouriteRecipe, Ingredient, Recipe,
                             RecipeIngredient, ShoppingCart, Tag)
+from rest_framework import serializers
 from users.models import Follow
 
 User = get_user_model()
