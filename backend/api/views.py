@@ -1,11 +1,5 @@
 import io
 import os
-from datetime import datetime
-
-from rest_framework import status
-from rest_framework.response import Response
-from rest_framework.generics import CreateAPIView
-from .serializers import CustomUserCreateSerializer
 
 from django.contrib.auth import get_user_model
 from django.db.models.aggregates import Sum
@@ -13,27 +7,31 @@ from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet
-from recipes.models import (FavouriteRecipe, Ingredient, Recipe,
-                            RecipeIngredient, ShoppingCart, Tag)
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from rest_framework import exceptions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.generics import CreateAPIView
 from rest_framework.permissions import SAFE_METHODS, IsAuthenticated
 from rest_framework.response import Response
+
+from recipes.models import (FavouriteRecipe, Ingredient, Recipe,
+                            RecipeIngredient, ShoppingCart, Tag)
 from users.models import Follow
 
 from .filters import IngredientFilter, RecipeFilter
 from .pagination import CustomPageNumberPagination
 from .permissions import CurrentUserOnly, RecipePermission
-from .serializers import (IngredientSerialiser, RecipeReadSerializer,
-                          RecipeWriteSerializer, ShortRecipeSerializer,
-                          SubscriptionSerializer, TagsSerializer)
+from .serializers import (CustomUserCreateSerializer, IngredientSerialiser,
+                          RecipeReadSerializer, RecipeWriteSerializer,
+                          ShortRecipeSerializer, SubscriptionSerializer,
+                          TagsSerializer)
 
 User = get_user_model()
 
 FILENAME = "shoppingcart.pdf"
+
 
 class CustomUserCreateView(CreateAPIView):
     serializer_class = CustomUserCreateSerializer
@@ -87,12 +85,13 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return self.delete_from(ShoppingCart, request.user, pk)
 
     @staticmethod
-    def create_shopping_cart_pdf(request) :
+    def create_shopping_cart_pdf(request):
         buffer = io.BytesIO()
         page = canvas.Canvas(buffer)
         x_position, y_position = 50, 800
         file_path = os.path.abspath("./data/")
-        pdfmetrics.registerFont(TTFont("firstime", f"{file_path}/FirstTimeWriting.ttf"))
+        pdfmetrics.registerFont(TTFont("firstime",
+                                       f"{file_path}/FirstTimeWriting.ttf"))
         page.setFont("firstime", 15)
         ingredients = (
             RecipeIngredient.objects.filter(
@@ -104,7 +103,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         )
         if ingredients:
             indent = 20
-            page.drawString(x_position, y_position, f"Продукты:")
+            page.drawString(x_position, y_position, "Продукты:")
             for index, ingredient in enumerate(ingredients, start=1):
                 page.drawString(
                     x_position,

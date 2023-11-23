@@ -11,7 +11,7 @@ SECRET_KEY = 'django-insecure-rb_&kn(bu9a$vq+4^))#b^**oo6r4h6qp9ai)!udq&ppc$)a22
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1','localhost','edagramm.ddns.net']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'edagramm.ddns.net']
 
 INSTALLED_APPS = [
     "django.contrib.admin",

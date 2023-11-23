@@ -12,6 +12,7 @@ class CurrentUserOnly(permissions.IsAuthenticated):
     def has_object_permission(self, request, view, obj):
         return request.user and request.user.id == obj.pk
 
+
 class RecipePermission(permissions.BasePermission):
     def has_permission(self, request, view):
         return (

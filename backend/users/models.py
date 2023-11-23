@@ -25,7 +25,7 @@ class Follow(models.Model):
                 name="user_not_author",
             ),
             models.UniqueConstraint(
-                fields=["user", "author"], 
+                fields=["user", "author"],
                 name="user_author"
             ),
         ]
