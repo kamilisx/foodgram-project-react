@@ -7,15 +7,17 @@ User = get_user_model()
 
 class IngredientFilter(FilterSet):
     """Filter for ingredient."""
+
     name = filters.CharFilter(lookup_expr="startswith")
 
     class Meta:
-        model: Ingredient = Ingredient
-        fields: tuple = ("name",)
+        model = Ingredient
+        fields = ("name",)
 
 
 class RecipeFilter(FilterSet):
     """Filter for Recipe."""
+
     tags = filters.ModelMultipleChoiceFilter(
         field_name="tags__slug",
         to_field_name="slug",
@@ -30,8 +32,8 @@ class RecipeFilter(FilterSet):
     )
 
     class Meta:
-        model: Recipe = Recipe
-        fields: tuple = (
+        model = Recipe
+        fields = (
             "tags",
             "author",
             "is_favorited",

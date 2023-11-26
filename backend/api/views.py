@@ -49,7 +49,8 @@ class TagsViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
-    queryset = Recipe.objects.all()
+    queryset = Recipe.objects.select_related("author").prefetch_related(
+        "tags", "ingredients")
     permission_classes = (RecipePermission,)
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipeFilter
@@ -119,6 +120,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
             buffer.seek(0)
             return FileResponse(buffer, as_attachment=True,
                                 filename=SHOPPINGCART_FILE)
+        if not ingredients:
+            return Response({'error': 'Отсутствуют ингредиенты'},
+                            status=status.HTTP_400_BAD_REQUEST)
         page.drawString(
             x_position, y_position, "Список пуст"
         )
@@ -151,14 +155,15 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @staticmethod
-    def delete_from(model, user: User, pk):
-        recipe = get_object_or_404(Recipe, pk=pk)
-        obj = model.objects.filter(user=user, recipe=recipe)
+    def delete_from(model, id, request):
+        obj = model.objects.filter(
+            user=request.user, recipe_id=id
+        )
         if obj.exists():
             obj.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(
-            {"errors": "Такого рецепта нет."},
+            {'error': 'Рецепт отсутствует'},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -182,8 +187,7 @@ class CustomUserViewSet(UserViewSet):
     )
     def subscriptions(self, request):
         user = self.request.user
-        user_subscriptions = user.follower.all()
-        authors = [item.author.id for item in user_subscriptions]
+        authors = User.objects.filter(following__user=user)
         queryset = User.objects.filter(pk__in=authors)
         paginated_queryset = self.paginate_queryset(queryset)
         serializer = self.get_serializer(paginated_queryset, many=True)

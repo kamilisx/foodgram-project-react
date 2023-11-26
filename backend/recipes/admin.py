@@ -26,6 +26,12 @@ class RecipeAdmin(admin.ModelAdmin):
         "author__username",
         "tags",
     )
+    list_select_related = ["author", ]
+
+    def get_queryset(self, request):
+        qs = super(RecipeAdmin, self).queryset(request)
+        return qs.prefetch_related("tags", "ingredients")
+
     inlines = (RecipeIngredientAdmin,)
 
     @admin.display(description="Избранное")

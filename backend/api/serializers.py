@@ -25,13 +25,13 @@ class Base64ImageField(serializers.ImageField):
 class TagsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
-        fields = "__all__"
+        fields = ("name", "color", "slug")
 
 
 class IngredientSerialiser(serializers.ModelSerializer):
     class Meta:
         model = Ingredient
-        fields = "__all__"
+        fields = ("name", "measurement_unit")
 
 
 class RecipeSerializer(serializers.ModelSerializer):
@@ -126,10 +126,6 @@ class SubscriptionSerializer(CustomUserSerializer):
             "recipes_count",
         )
 
-    @staticmethod
-    def get_resipe_serializer():
-        return RecipeSerializer
-
     def get_recipes(self, obj):
         author_recipes = Recipe.objects.filter(author=obj)
 
@@ -148,6 +144,7 @@ class SubscriptionSerializer(CustomUserSerializer):
         return []
 
     def get_recipes_count(self, obj):
+
         return Recipe.objects.filter(author=obj).count()
 
 
@@ -290,7 +287,14 @@ class RecipeReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recipe
-        exclude = ("pub_date",)
+        exclude = ("author",
+                   "name",
+                   "image",
+                   "text",
+                   "ingredients",
+                   "tags",
+                   "cooking_time"
+                   )
 
     def __is_auth_and_exists(self, obj, model):
         request = self.context.get("request")
