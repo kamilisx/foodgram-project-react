@@ -26,13 +26,12 @@ class RecipeAdmin(admin.ModelAdmin):
         "author__username",
         "tags",
     )
-    list_select_related = ["author", ]
+    inlines = (RecipeIngredientAdmin,)
 
     def get_queryset(self, request):
         qs = super(RecipeAdmin, self).queryset(request)
-        return qs.prefetch_related("tags", "ingredients")
-
-    inlines = (RecipeIngredientAdmin,)
+        return qs.select_related("author").prefetch_related(
+            "tags", "ingredients")
 
     @admin.display(description="Избранное")
     def get_favorite_count(self, obj):
@@ -52,9 +51,13 @@ class FavoriteRecipeAdmin(admin.ModelAdmin):
     search_fields = ("user__username", "recipe__name")
     list_filter = ("user__username", "recipe__name")
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related("user", "recipe")
+
 
 @admin.register(Ingredient)
-class IngridientAdmin(admin.ModelAdmin):
+class IngredientAdmin(admin.ModelAdmin):
     list_display = (
         "id",
         "name",
@@ -84,3 +87,7 @@ class ShoppingCartAdmin(admin.ModelAdmin):
         "user__username",
         "recipe__name",
     )
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related("user", "recipe")

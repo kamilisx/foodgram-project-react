@@ -2,13 +2,12 @@ import io
 import os
 
 from django.contrib.auth import get_user_model
+from django.db.models import Count
 from django.db.models.aggregates import Sum
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet
-from recipes.models import (FavouriteRecipe, Ingredient, Recipe,
-                            RecipeIngredient, ShoppingCart, Tag)
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
@@ -17,6 +16,9 @@ from rest_framework.decorators import action
 from rest_framework.generics import CreateAPIView
 from rest_framework.permissions import SAFE_METHODS, IsAuthenticated
 from rest_framework.response import Response
+
+from recipes.models import (FavouriteRecipe, Ingredient, Recipe,
+                            RecipeIngredient, ShoppingCart, Tag)
 from users.models import Follow
 
 from .filters import IngredientFilter, RecipeFilter
@@ -85,7 +87,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return self.delete_from(ShoppingCart, request.user, pk)
 
     @staticmethod
-    def create_shopping_cart_pdf(request):
+    def generate_pdf(ingredients):
         buffer = io.BytesIO()
         page = canvas.Canvas(buffer)
         x_position, y_position = 50, 800
@@ -93,49 +95,41 @@ class RecipeViewSet(viewsets.ModelViewSet):
         pdfmetrics.registerFont(TTFont("firstime",
                                        f"{file_path}/FirstTimeWriting.ttf"))
         page.setFont("firstime", 15)
-        ingredients = (
-            RecipeIngredient.objects.filter(
-                recipe__shopping_cart__user=request.user
-            )
-            .values("ingredient__name",
-                    "ingredient__measurement_unit")
-            .annotate(amount=Sum("amount"))
-        )
-        if ingredients:
-            indent = 20
-            page.drawString(x_position, y_position, "Продукты:")
-            for index, ingredient in enumerate(ingredients, start=1):
-                page.drawString(
-                    x_position,
-                    y_position - indent,
-                    f'{index}. {ingredient["ingredient__name"]} - '
-                    f'{ingredient["amount"]} '
-                    f'{ingredient["ingredient__measurement_unit"]}.',
-                )
-                y_position -= 15
-                if y_position <= 50:
-                    page.showPage()
-                    y_position = 800
-            page.save()
-            buffer.seek(0)
-            return FileResponse(buffer, as_attachment=True,
-                                filename=SHOPPINGCART_FILE)
         if not ingredients:
-            return Response({'error': 'Отсутствуют ингредиенты'},
+            return Response({"error": "Отсутствуют ингредиенты"},
                             status=status.HTTP_400_BAD_REQUEST)
-        page.drawString(
-            x_position, y_position, "Список пуст"
-        )
+        indent = 20
+        page.drawString(x_position, y_position, "Продукты:")
+        for index, ingredient in enumerate(ingredients, start=1):
+            page.drawString(
+                x_position,
+                y_position - indent,
+                f'{index}. {ingredient["ingredient__name"]} - '
+                f'{ingredient["amount"]} '
+                f'{ingredient["ingredient__measurement_unit"]}.',
+            )
+            y_position -= 15
+            if y_position <= 50:
+                page.showPage()
+                y_position = 800
         page.save()
         buffer.seek(0)
-        return FileResponse(buffer, as_attachment=False,
+        return FileResponse(buffer, as_attachment=True,
                             filename=SHOPPINGCART_FILE)
 
     @action(
         detail=False, methods=["get"], permission_classes=(IsAuthenticated,)
     )
     def download_shopping_cart(self, request):
-        return self.create_shopping_cart_pdf(request)
+        ingredients = RecipeIngredient.objects.filter(
+            recipe__shopping_cart__user=request.user
+        ).values(
+            "ingredient__name",
+            "ingredient__measurement_unit"
+        ).annotate(
+            amount=Sum("amount")
+        )
+        return self.generate_pdf(ingredients)
 
     @staticmethod
     def add_to(model, user: User, pk):
@@ -155,16 +149,16 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @staticmethod
-    def delete_from(model, id, request):
-        obj = model.objects.filter(
-            user=request.user, recipe_id=id
-        )
-        if obj.exists():
-            obj.delete()
+    def delete_from(model, user, pk):
+        queryset = model.objects.filter(user=user, recipe__id=pk)
+        delete_count, _ = queryset.delete()
+
+        if delete_count > 0:
             return Response(status=status.HTTP_204_NO_CONTENT)
+
         return Response(
-            {'error': 'Рецепт отсутствует'},
-            status=status.HTTP_400_BAD_REQUEST,
+            {"errors": "Такого рецепта нет"},
+            status=status.HTTP_400_BAD_REQUEST
         )
 
 
@@ -187,9 +181,9 @@ class CustomUserViewSet(UserViewSet):
     )
     def subscriptions(self, request):
         user = self.request.user
-        authors = User.objects.filter(following__user=user)
-        queryset = User.objects.filter(pk__in=authors)
-        paginated_queryset = self.paginate_queryset(queryset)
+        authors = User.objects.filter(following__user=user).annotate(
+            count_recipes=Count("recipe"))
+        paginated_queryset = self.paginate_queryset(authors)
         serializer = self.get_serializer(paginated_queryset, many=True)
         return self.get_paginated_response(serializer.data)
 

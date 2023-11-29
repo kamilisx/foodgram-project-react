@@ -7,11 +7,11 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-rb_&kn(bu9a$vq+4^))#b^**oo6r4h6qp9ai)!udq&ppc$)a22'
+SECRET_KEY = os.getenv("SECRET_KEY", "secret")
 
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'edagramm.ddns.net']
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", " ").split(", ")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -96,15 +96,15 @@ USE_L10N = True
 USE_TZ = True
 
 
-STATIC_URL = '/backend_static/'
-STATIC_ROOT = '/app/static/'
+STATIC_URL = "/backend_static/"
+STATIC_ROOT = "/app/static/"
 
-MEDIA_URL = '/backend_media/'
-MEDIA_ROOT = '/app/backend_media/'
+MEDIA_URL = "/backend_media/"
+MEDIA_ROOT = "/app/backend_media/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-AUTH_USER_MODEL = 'users.CustomUser'
+AUTH_USER_MODEL = "users.CustomUser"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
